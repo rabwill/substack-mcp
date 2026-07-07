@@ -10,10 +10,11 @@ import { SubstackClient } from "substack-api";
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
 
-const server = new McpServer({
-  name: "substack-mcp",
-  version: "1.0.0",
-});
+function createMcpServer(): McpServer {
+  const server = new McpServer({
+    name: "substack-mcp",
+    version: "1.0.0",
+  });
 
 function getClient(): SubstackClient {
   const token = process.env.SUBSTACK_TOKEN;
@@ -196,14 +197,11 @@ server.registerTool(
   },
 );
 
+  return server;
+}
+
 const port = Number(process.env.PORT ?? "3000");
 const host = process.env.HOST ?? "0.0.0.0";
-
-const transport = new StreamableHTTPServerTransport({
-  sessionIdGenerator: () => crypto.randomUUID(),
-});
-
-await server.connect(transport);
 
 const httpServer = createServer(async (req, res) => {
   if (!req.url) {
@@ -226,6 +224,18 @@ const httpServer = createServer(async (req, res) => {
     res.end("Not found");
     return;
   }
+
+  const server = createMcpServer();
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+  });
+
+  await server.connect(transport);
+
+  res.on("close", () => {
+    void transport.close();
+    void server.close();
+  });
 
   await transport.handleRequest(req, res);
 });
