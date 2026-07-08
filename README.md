@@ -13,6 +13,12 @@ Remote MCP server that provides tools to read a Substack user's notes and recent
 - A valid `substack.sid` cookie value (used as `SUBSTACK_TOKEN`)
 - A reachable HTTP host/port for the MCP endpoint
 
+## Disclaimer
+
+This project accesses Substack data using authentication cookies and is intended only for accounts and content you are authorized to access. Make sure your use complies with Substack's terms, applicable privacy rules, and any consent requirements for the data you retrieve.
+
+The server may use AI-assisted processing when returning or summarizing results. AI-generated output can be incomplete, inaccurate, or stale, so verify important information before relying on it.
+
 ## Setup
 
 1. Install dependencies:
