@@ -65,13 +65,14 @@ function createDateRange(startDate?: string, endDate?: string): DateRange | unde
   return { start, end };
 }
 
-function filterByDateRange<T>(items: T[], dateRange: DateRange | undefined, getDate: (item: T) => string): T[] {
+function filterByDateRange<T>(items: T[], dateRange: DateRange | undefined, getDate: (item: T) => Date | string): T[] {
   if (!dateRange) {
     return items;
   }
 
   return items.filter((item) => {
-    const timestamp = new Date(getDate(item));
+    const date = getDate(item);
+    const timestamp = date instanceof Date ? date : new Date(date);
     return !Number.isNaN(timestamp.getTime()) && timestamp >= dateRange.start && timestamp < dateRange.end;
   });
 }
