@@ -70,4 +70,4 @@ Add this remote MCP endpoint to your client config:
 ## Tool Inputs
 
 - `profile` (string): Public profile slug, with or without `@`
-- `limit` (number, optional): Maximum items to return (default `10`, max `50`)
+- `limit` (number, optional): Maximum items to return (default `10`, max `500`)

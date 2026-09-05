@@ -8,7 +8,7 @@ import { z } from "zod";
 import { SubstackClient } from "substack-api";
 
 const DEFAULT_LIMIT = 10;
-const MAX_LIMIT = 50;
+const MAX_LIMIT = 500;
 
 function createMcpServer(): McpServer {
   const server = new McpServer({
@@ -59,7 +59,7 @@ server.registerTool(
     description: "Fetch recent notes for a Substack profile by public slug/handle.",
     inputSchema: {
       profile: z.string().min(1).describe("Public profile slug, with or without @ (example: @on or on)."),
-      limit: z.number().int().positive().max(MAX_LIMIT).optional().describe("Maximum number of notes to return (default: 10, max: 50)."),
+      limit: z.number().int().positive().max(MAX_LIMIT).optional().describe("Maximum number of notes to return (default: 10, max: 1000)."),
     },
   },
   async ({ profile, limit }) => {
@@ -122,7 +122,7 @@ server.registerTool(
     description: "Fetch recent Substack activity (posts and notes) for a profile by public slug/handle.",
     inputSchema: {
       profile: z.string().min(1).describe("Public profile slug, with or without @ (example: @on or on)."),
-      limit: z.number().int().positive().max(MAX_LIMIT).optional().describe("Maximum number of posts and notes each (default: 10, max: 50)."),
+      limit: z.number().int().positive().max(MAX_LIMIT).optional().describe("Maximum number of posts and notes each (default: 10, max: 1000)."),
     },
   },
   async ({ profile, limit }) => {
