@@ -10,6 +10,11 @@ import { SubstackClient } from "substack-api";
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 500;
 
+type DateRange = {
+  start: Date;
+  end: Date;
+};
+
 function createMcpServer(): McpServer {
   const server = new McpServer({
     name: "substack-mcp",
@@ -41,6 +46,36 @@ function clampLimit(limit: number | undefined): number {
   return Math.max(1, Math.min(MAX_LIMIT, Math.floor(limit)));
 }
 
+function createDateRange(startDate?: string, endDate?: string): DateRange | undefined {
+  if (!startDate && !endDate) {
+    return undefined;
+  }
+
+  if (!startDate || !endDate) {
+    throw new Error("Both startDate and endDate are required when filtering by date.");
+  }
+
+  const start = new Date(`${startDate}T00:00:00.000Z`);
+  const end = new Date(`${endDate}T00:00:00.000Z`);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end) {
+    throw new Error("Date range must use valid ISO dates and endDate must be after startDate.");
+  }
+
+  return { start, end };
+}
+
+function filterByDateRange<T>(items: T[], dateRange: DateRange | undefined, getDate: (item: T) => string): T[] {
+  if (!dateRange) {
+    return items;
+  }
+
+  return items.filter((item) => {
+    const timestamp = new Date(getDate(item));
+    return !Number.isNaN(timestamp.getTime()) && timestamp >= dateRange.start && timestamp < dateRange.end;
+  });
+}
+
 async function collectAsync<T>(iterable: AsyncIterable<T>, limit: number): Promise<T[]> {
   const results: T[] = [];
   for await (const item of iterable) {
@@ -60,16 +95,20 @@ server.registerTool(
     inputSchema: {
       profile: z.string().min(1).describe("Public profile slug, with or without @ (example: @on or on)."),
       limit: z.number().int().positive().max(MAX_LIMIT).optional().describe("Maximum number of notes to return (default: 10, max: 1000)."),
+      startDate: z.iso.date().optional().describe("Inclusive UTC start date in YYYY-MM-DD format."),
+      endDate: z.iso.date().optional().describe("Exclusive UTC end date in YYYY-MM-DD format. For one day, use the following date."),
     },
   },
-  async ({ profile, limit }) => {
+  async ({ profile, limit, startDate, endDate }) => {
     try {
       const client = getClient();
       const slug = normalizeSlug(profile);
       const boundedLimit = clampLimit(limit);
+      const dateRange = createDateRange(startDate, endDate);
 
       const targetProfile = await client.profileForSlug(slug);
-      const notes = await collectAsync(targetProfile.notes({ limit: boundedLimit }), boundedLimit);
+      const fetchedNotes = await collectAsync(targetProfile.notes({ limit: dateRange ? MAX_LIMIT : boundedLimit }), dateRange ? MAX_LIMIT : boundedLimit);
+      const notes = filterByDateRange(fetchedNotes, dateRange, (note) => note.publishedAt).slice(0, boundedLimit);
 
       return {
         content: [
@@ -123,19 +162,25 @@ server.registerTool(
     inputSchema: {
       profile: z.string().min(1).describe("Public profile slug, with or without @ (example: @on or on)."),
       limit: z.number().int().positive().max(MAX_LIMIT).optional().describe("Maximum number of posts and notes each (default: 10, max: 1000)."),
+      startDate: z.iso.date().optional().describe("Inclusive UTC start date in YYYY-MM-DD format."),
+      endDate: z.iso.date().optional().describe("Exclusive UTC end date in YYYY-MM-DD format. For one day, use the following date."),
     },
   },
-  async ({ profile, limit }) => {
+  async ({ profile, limit, startDate, endDate }) => {
     try {
       const client = getClient();
       const slug = normalizeSlug(profile);
       const boundedLimit = clampLimit(limit);
+      const dateRange = createDateRange(startDate, endDate);
 
       const targetProfile = await client.profileForSlug(slug);
-      const [notes, posts] = await Promise.all([
-        collectAsync(targetProfile.notes({ limit: boundedLimit }), boundedLimit),
-        collectAsync(targetProfile.posts({ limit: boundedLimit }), boundedLimit),
+      const fetchLimit = dateRange ? MAX_LIMIT : boundedLimit;
+      const [fetchedNotes, fetchedPosts] = await Promise.all([
+        collectAsync(targetProfile.notes({ limit: fetchLimit }), fetchLimit),
+        collectAsync(targetProfile.posts({ limit: fetchLimit }), fetchLimit),
       ]);
+      const notes = filterByDateRange(fetchedNotes, dateRange, (note) => note.publishedAt).slice(0, boundedLimit);
+      const posts = filterByDateRange(fetchedPosts, dateRange, (post) => post.publishedAt).slice(0, boundedLimit);
 
       const activity = [
         ...notes.map((note) => ({

@@ -71,3 +71,4 @@ Add this remote MCP endpoint to your client config:
 
 - `profile` (string): Public profile slug, with or without `@`
 - `limit` (number, optional): Maximum items to return (default `10`, max `500`)
+- `startDate` and `endDate` (optional): Inclusive/exclusive UTC date range in `YYYY-MM-DD` format. Supply both fields; to retrieve only 5 September 2026, use `startDate: "2026-09-05"` and `endDate: "2026-09-06"`.
